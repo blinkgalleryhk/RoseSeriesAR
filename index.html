@@ -1,0 +1,211 @@
+<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover"><title>Multi-Face AR Effects</title><meta itemprop="name" content="Multi-Face AR Effects"><meta name="twitter:title" content="Multi-Face AR Effects"><meta property="og:title" content="Multi-Face AR Effects"><meta property="og:site_name" content="Multi-Face AR Effects"><meta name="description" content="Multi-face detection AR with up to 5 simultaneous faces tracked."><meta itemprop="description" content="Multi-face detection AR with up to 5 simultaneous faces tracked."><meta property="og:description" content="Multi-face detection AR with up to 5 simultaneous faces tracked."><script crossorigin="anonymous" src="./external/runtime/runtime.js"></script><script src="https://cdn.jsdelivr.net/npm/@8thwall/engine-binary@1/dist/xr.js" async crossorigin="anonymous" data-preload-chunks="face"></script><script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script><script>console.log('=== Multi-Face AR Loading ===')
+    function updateStatus(text, color = 'white') { console.log('Status:', text) }
+    function updateDetails(text) { console.log('Details:', text) }
+    window.updateLoadingStatus = updateStatus
+    window.updateLoadingDetails = updateDetails
+    console.log('Initialization script loaded')</script><link rel="preconnect" href="https://cdn.8thwall.com"><link rel="preconnect" href="https://cdn.jsdelivr.net"><meta property="og:image" content="https://8thwall.org/studio-face-effects-example/assets/preview.png"><style>/* (All existing CSS remains unchanged) */
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+    #filter-carousel { position: fixed; bottom: 0; left: 0; right: 0; padding: 16px 0 28px 0; padding-bottom: max(100px, calc(env(safe-area-inset-bottom) + 60px)); background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 60%, transparent 100%); z-index: 50; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }
+    #filter-carousel.visible { opacity: 1; pointer-events: auto; }
+    .carousel-wrapper { position: relative; display: flex; align-items: center; }
+    .filter-scroll { display: flex; gap: 14px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none; padding: 8px 24px; flex-wrap: nowrap; white-space: nowrap; scroll-padding-left: calc(50vw - 30px); scroll-padding-right: calc(50vw - 30px); scroll-behavior: smooth; touch-action: pan-x pan-y pinch-zoom; width: 100%; }
+    .filter-scroll::-webkit-scrollbar { display: none; }
+    .scroll-btn { display: none; position: absolute; z-index: 52; width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 167, 3, 0.993); border: 1px solid rgb(255, 179, 15); color: rgb(255, 177, 8); font-size: 18px; cursor: pointer; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s ease; -webkit-user-select: none; user-select: none; }
+    .scroll-btn:hover { background: rgba(255,255,255,0.35); transform: scale(1.1); }
+    .scroll-btn:active { transform: scale(0.95); }
+    .scroll-btn.left { left: 4px; }
+    .scroll-btn.right { right: 4px; }
+    @media (min-width: 768px) { .scroll-btn { display: flex; } }
+    .filter-item { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 6px; scroll-snap-align: center; cursor: pointer; transition: transform 0.15s ease; -webkit-user-select: none; user-select: none; min-width: 64px; max-width: 64px; }
+    .filter-item:active { transform: scale(0.92); }
+    .filter-thumb { width: 60px; height: 60px; border-radius: 50%; border: 2px solid rgb(255, 255, 255); overflow: hidden; position: relative; transition: all 0.2s ease; background-size: cover; background-position: center; flex-shrink: 0; background-color: #333; }
+    .filter-item.active .filter-thumb { border-color: #fff; box-shadow: 0 0 0 3px #ffd9e3, 0 0 12px rgba(76, 175, 80, 0.4); transform: scale(1.08); }
+    .filter-item.active .filter-name { color: #ffd9e3; font-weight: 700; }
+    .filter-name { color: rgba(255,255,255,0.7); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 64px; transition: color 0.2s ease; text-shadow: 0 1px 3px rgba(0,0,0,0.5); text-align: center; }
+    .center-indicator { position: fixed; bottom: 96px; left: 50%; transform: translateX(-50%); width: 2px; height: 18px; background: rgba(255,255,255,0.4); border-radius: 1px; pointer-events: none; z-index: 51; opacity: 0; transition: opacity 0.5s ease; }
+    .center-indicator.visible { opacity: 1; }
+    #current-filter-label { position: fixed; bottom: 118px; left: 50%; transform: translateX(-50%); color: white; font-size: 15px; font-weight: 600; text-shadow: 0 2px 10px rgba(0,0,0,0.8); opacity: 0; transition: opacity 0.3s ease; pointer-events: none; z-index: 51; letter-spacing: 0.5px; }
+    #current-filter-label.visible { opacity: 1; }
+    #capture-btn { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 68px; height: 68px; border-radius: 50%; border: 4px solid white; background: rgba(255,255,255,0.15); cursor: pointer; z-index: 50; opacity: 0; transition: all 0.3s ease; pointer-events: none; backdrop-filter: blur(4px); }
+    #capture-btn.visible { opacity: 1; pointer-events: auto; }
+    #capture-btn::after { content: ''; position: absolute; top: 5px; left: 5px; right: 5px; bottom: 5px; border-radius: 50%; background: white; transition: all 0.15s ease; }
+    #capture-btn:active::after { transform: scale(0.88); background: #e0e0e0; }
+    #face-indicator { position: fixed; top: 16px; right: 16px; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px); border-radius: 20px; padding: 10px 14px; z-index: 50; display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255, 255, 255, 0.1); opacity: 0; transition: opacity 0.5s ease; }
+    #face-indicator.visible { opacity: 1; }
+    .face-dot { width: 12px; height: 12px; border-radius: 50%; background: #333; border: 2px solid rgba(255, 255, 255, 0.3); transition: all 0.3s ease; }
+    .face-dot.active { background: #db86cc; border-color: #db86cc; box-shadow: 0 0 8px rgba(167, 76, 175, 0.5); }
+    .face-dot-label { color: white; font-size: 11px; font-weight: 600; margin-right: 2px; }
+    #simple-loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    #loading-video { width: 110%; height: 110%; object-fit: cover; transform: translateX(-20px); }
+    #camera-error { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: white; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; text-align: center; padding: 20px; }
+    #camera-error h2 { color: #ff6b6b; margin-bottom: 20px; }
+    #camera-error p { margin-bottom: 10px; opacity: 0.9; }
+    @keyframes scrollHint { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-8px); } }
+    .scroll-hint { animation: scrollHint 1.5s ease-in-out 3; }
+
+  @font-face {
+    font-family: 'tk1';
+    src: url('assets/tk1.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+  }</style></head><body><div id="filter-carousel"><div class="carousel-wrapper"><button class="scroll-btn left" id="scroll-left" aria-label="Scroll left">‹</button><div class="filter-scroll" id="filter-scroll"><div class="filter-item active" data-filter="baobao"><div class="filter-thumb" style="background-image: url('assets/CORGI_PAINTING.jpg')"></div><span class="filter-name">Baobao</span></div><div class="filter-item" data-filter="realcat"><div class="filter-thumb" style="background-image: url('assets/TURTLE_PAINTING.png')"></div><span class="filter-name">Real Cat</span></div><div class="filter-item" data-filter="thirdcat"><div class="filter-thumb" style="background-image: url('assets/MONGREL_PAINTING.png')"></div><span class="filter-name">Cat on Branch</span></div><div class="filter-item" data-filter="fourthcat"><div class="filter-thumb" style="background-image: url('assets/RABBIT_PAINTING.png')"></div><span class="filter-name">Lucky cat</span></div><div class="filter-item" data-filter="fifthcat"><div class="filter-thumb" style="background-image: url('assets/8.png')"></div><span class="filter-name">Flower Cat</span></div><div class="filter-item" data-filter="ninethcat"><div class="filter-thumb" style="background-image: url('assets/7.png')"></div><span class="filter-name">Cat with Flowers</span></div></div><button class="scroll-btn right" id="scroll-right" aria-label="Scroll right">›</button></div></div><div class="center-indicator" id="center-indicator"></div><div id="current-filter-label">Baobao</div><div id="capture-btn"></div><div id="face-indicator"><span class="face-dot-label">Faces:</span><div class="face-dot" data-face="1" title="Face 1"></div><div class="face-dot" data-face="2" title="Face 2"></div><div class="face-dot" data-face="3" title="Face 3"></div></div><div id="simple-loading"><video id="loading-video" autoplay loop muted playsinline><source src="assets/cat_loading_screen.mp4" type="video/mp4"><div style="color:white; font-size:20px;">Loading AR experience...</div></video></div><div id="camera-error"></div><script>(function() {
+      const video = document.getElementById('loading-video');
+      if (video) {
+        // Ensure muted and playsinline are set
+        video.muted = true;
+        video.playsInline = true;
+        // Hide native controls by preventing pointer events on the video
+        video.style.pointerEvents = 'none';
+
+        // Attempt to play automatically
+        const playVideo = () => {
+          video.play().catch(err => {
+            console.warn('Autoplay prevented:', err);
+            // On any user interaction (click/touch), play the video
+            const once = () => {
+              video.play().catch(() => {});
+              document.removeEventListener('click', once);
+              document.removeEventListener('touchstart', once);
+            };
+            document.addEventListener('click', once);
+            document.addEventListener('touchstart', once);
+          });
+        };
+
+        // Wait for the video to be ready, then play
+        if (video.readyState >= 2) {
+          playVideo();
+        } else {
+          video.addEventListener('canplaythrough', playVideo, { once: true });
+          // Fallback: try after a short delay
+          setTimeout(playVideo, 1000);
+        }
+      }
+    })();
+
+    (function() {
+      // ----- SPACE NAME → UUID MAPPING (from .expanse.json) -----
+      const spaceMap = {
+        'baobao':    '84028e73-ee70-412d-b8d4-c09bf07c655c',
+        'realcat':   '1a5ce9bc-1ff5-4c23-808b-d5866200dc2c',
+        'thirdcat':  '7a14d767-1199-4786-9f63-b28a54b58bdb',
+        'fourthcat': 'f2fa8836-caf3-4a15-8500-ca57fe28b152',
+        'fifthcat':  'ba175cd2-2239-485e-81ea-c20c393cbe7a',
+        'sixthcat':  'ed84fe7d-ef63-4859-aa44-1565ace68d1e',
+        'seventhcat':'073442d9-1423-4f99-9c7e-da3ba77230b5',
+        'eighthcat': '816044ed-d995-4d80-99d2-adb59ecc02bb',
+        'ninethcat': '1a3e53c0-ba61-4213-8295-ddb2565c5f95',
+        'tenthcat':  'f1201b1c-14ca-47fb-84f3-5d8ba36514f1'
+      };
+
+      const scrollContainer = document.getElementById('filter-scroll');
+      const leftBtn = document.getElementById('scroll-left');
+      const rightBtn = document.getElementById('scroll-right');
+      const filterItems = document.querySelectorAll('.filter-item');
+      const currentLabel = document.getElementById('current-filter-label');
+      let currentIndex = 0;
+
+      function scrollToIndex(index) {
+        if (index < 0) index = 0;
+        if (index >= filterItems.length) index = filterItems.length - 1;
+        currentIndex = index;
+        const item = filterItems[index];
+        if (item && scrollContainer) {
+          const containerWidth = scrollContainer.clientWidth;
+          const itemLeft = item.offsetLeft;
+          const itemWidth = item.offsetWidth;
+          const scrollTo = itemLeft - (containerWidth / 2) + (itemWidth / 2);
+          scrollContainer.scrollTo({ left: scrollTo, behavior: 'smooth' });
+        }
+        updateActiveState(index);
+      }
+
+      function updateActiveState(index) {
+        filterItems.forEach((item, i) => {
+          item.classList.toggle('active', i === index);
+        });
+        const label = filterItems[index]?.querySelector('.filter-name')?.textContent || '';
+        if (currentLabel) {
+        }
+      }
+
+      if (leftBtn) {
+        leftBtn.addEventListener('click', () => scrollToIndex(currentIndex - 1));
+      }
+      if (rightBtn) {
+        rightBtn.addEventListener('click', () => scrollToIndex(currentIndex + 1));
+      }
+
+      // ----- Updated click handler using UUID -----
+      filterItems.forEach((item, index) => {
+        item.addEventListener('click', () => {
+          const filterName = item.dataset.filter;          // e.g., "tenthcat"
+          const spaceId = spaceMap[filterName];            // UUID
+          if (spaceId && window.globalWorld) {
+            try {
+              window.globalWorld.spaces.loadSpace(spaceId);
+              console.log(`➡️ Loading space: ${filterName} (${spaceId})`);
+            } catch (err) {
+              console.error('❌ Failed to load space:', err);
+            }
+          } else {
+            console.warn(`❌ Cannot load space: ${filterName} → ${spaceId ? 'globalWorld not ready' : 'unknown space'}`);
+            // Optionally retry later if globalWorld not ready
+            if (!window.globalWorld) {
+              setTimeout(() => {
+                if (window.globalWorld) {
+                  console.log('🔄 Retrying loadSpace after globalWorld became available');
+                  const retryId = spaceMap[filterName];
+                  if (retryId) window.globalWorld.spaces.loadSpace(retryId);
+                }
+              }, 500);
+            }
+          }
+          scrollToIndex(index);
+        });
+      });
+
+      let scrollTimeout;
+      if (scrollContainer) {
+        scrollContainer.addEventListener('scroll', () => {
+          clearTimeout(scrollTimeout);
+          scrollTimeout = setTimeout(() => {
+            const containerRect = scrollContainer.getBoundingClientRect();
+            const containerCenter = containerRect.left + containerRect.width / 2;
+            let closestIndex = 0;
+            let closestDistance = Infinity;
+            filterItems.forEach((item, i) => {
+              const itemRect = item.getBoundingClientRect();
+              const itemCenter = itemRect.left + itemRect.width / 2;
+              const distance = Math.abs(itemCenter - containerCenter);
+              if (distance < closestDistance) {
+                closestDistance = distance;
+                closestIndex = i;
+              }
+            });
+            if (closestIndex !== currentIndex) {
+              currentIndex = closestIndex;
+              updateActiveState(currentIndex);
+            }
+          }, 100);
+        });
+      }
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') scrollToIndex(currentIndex - 1);
+        if (e.key === 'ArrowRight') scrollToIndex(currentIndex + 1);
+      });
+
+      window.showFilterCarousel = function() {
+        const carousel = document.getElementById('filter-carousel');
+        const indicator = document.getElementById('center-indicator');
+        const captureBtn = document.getElementById('capture-btn');
+        if (carousel) carousel.classList.add('visible');
+        if (indicator) indicator.classList.add('visible');
+        if (captureBtn) captureBtn.classList.add('visible');
+      };
+    })();</script><script src="bundle.js"></script><style>.filter-scroll::-webkit-scrollbar,
+    .scrollable-selector::-webkit-scrollbar {
+      display: none;
+    }</style></body></html>
